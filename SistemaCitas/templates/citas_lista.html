@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge_estado %}
+{% block title %}Citas{% endblock %}
+{% block content %}
+{% set rol = session.get('rol') %}
+{% set staff = rol in ('administrador','recepcionista') %}
+<div class="card shadow-sm"><div class="card-body">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h1 class="h4 mb-0">{{ 'Mis citas' if rol in ('paciente','medico') else 'Citas' }}</h1>
+    <div class="d-flex gap-2 flex-wrap">
+      <form class="d-flex gap-2" method="get">
+        <input type="date" class="form-control form-control-sm" name="fecha" value="{{ fecha }}">
+        <select class="form-select form-select-sm" name="estado">
+          <option value="">Todos</option>
+          {% for e in estados %}<option {{ 'selected' if e == estado }}>{{ e }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline-primary btn-sm" type="submit"><i class="bi bi-funnel"></i></button>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('citas_lista') }}">Limpiar</a>
+      </form>
+      {% if rol in ('administrador','recepcionista','paciente') %}
+      <a class="btn btn-success btn-sm" href="{{ url_for('cita_form') }}"><i class="bi bi-plus-lg"></i> Agendar cita</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead><tr><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Médico</th><th>Motivo</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+      <tbody>
+      {% for c in citas %}
+        {% set abierta = c.estado in ('Programada','Confirmada') %}
+        <tr>
+          <td>{{ c.fecha|fecha }}</td><td>{{ c.hora|hora }}</td>
+          <td>{{ c.paciente }}</td>
+          <td>{{ c.medico }}<br><small class="text-muted">{{ c.especialidad or '' }}</small></td>
+          <td>{{ c.motivo }}</td>
+          <td>{{ badge_estado(c.estado) }}</td>
+          <td class="text-end text-nowrap">
+            {% if staff and c.estado == 'Programada' %}
+            <form class="d-inline" method="post" action="{{ url_for('cita_estado', cita_id=c.id) }}">
+              <input type="hidden" name="estado" value="Confirmada">
+              <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-check2"></i> Confirmar</button>
+            </form>
+            {% endif %}
+            {% if rol == 'medico' and c.estado != 'Cancelada' %}
+            <a class="btn btn-sm btn-success" href="{{ url_for('atender', cita_id=c.id) }}"><i class="bi bi-clipboard2-pulse"></i> {{ 'Editar atención' if c.historial_id else 'Atender' }}</a>
+            {% endif %}
+            {% if rol != 'paciente' and c.historial_id %}
+            <a class="btn btn-sm btn-info" href="{{ url_for('historial', paciente_id=c.paciente_id) }}"><i class="bi bi-journal-medical"></i></a>
+            {% endif %}
+            {% if staff and abierta %}
+            <a class="btn btn-sm btn-warning" href="{{ url_for('cita_form', cita_id=c.id) }}"><i class="bi bi-pencil"></i> Reprogramar</a>
+            {% endif %}
+            {% if abierta %}
+            <form class="d-inline" method="post" action="{{ url_for('cita_estado', cita_id=c.id) }}"
+                  onsubmit="return confirm('¿Cancelar esta cita?');">
+              <input type="hidden" name="estado" value="Cancelada">
+              <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-x-circle"></i> Cancelar</button>
+            </form>
+            {% endif %}
+            {% if rol == 'administrador' %}
+            <form class="d-inline" method="post" action="{{ url_for('cita_eliminar', cita_id=c.id) }}"
+                  onsubmit="return confirm('¿Eliminar definitivamente esta cita?');">
+              <button class="btn btn-sm btn-danger" type="submit"><i class="bi bi-trash"></i></button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="text-center text-muted">No hay citas para mostrar.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div></div>
+{% endblock %}

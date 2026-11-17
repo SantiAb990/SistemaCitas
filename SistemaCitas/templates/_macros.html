@@ -1,0 +1,10 @@
+{% macro badge_estado(estado) %}
+  {% set c = {'Programada':'warning text-dark','Confirmada':'info text-dark','Atendida':'success','Cancelada':'secondary'} %}
+  <span class="badge text-bg-{{ c.get(estado, 'light') }}">{{ estado }}</span>
+{% endmacro %}
+
+{% macro campo(id, etiqueta, datos, tipo='text', requerido=True, extra='') %}
+  <label for="{{ id }}" class="form-label">{{ etiqueta }}</label>
+  <input id="{{ id }}" name="{{ id }}" type="{{ tipo }}" class="form-control"
+         value="{{ datos.get(id, '') or '' }}" {{ 'required' if requerido }} {{ extra|safe }}>
+{% endmacro %}

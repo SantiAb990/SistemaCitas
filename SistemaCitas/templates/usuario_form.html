@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo %}
+{% block title %}Nuevo usuario{% endblock %}
+{% block content %}
+<div class="card shadow-sm"><div class="card-body">
+  <h1 class="h4 mb-3">Nuevo usuario</h1>
+  <p class="text-muted small">Aquí se crean administradores y recepcionistas. Los médicos se crean en el módulo Médicos y los pacientes se registran solos o desde Pacientes.</p>
+  <form method="post" class="row g-3">
+    <div class="col-md-6">{{ campo('nombre','Nombre completo',datos) }}</div>
+    <div class="col-md-6">{{ campo('correo','Correo',datos,'email') }}</div>
+    <div class="col-md-6">
+      <label for="rol" class="form-label">Rol</label>
+      <select id="rol" name="rol" class="form-select" required>
+        <option value="recepcionista" {{ 'selected' if datos.get('rol') == 'recepcionista' }}>Recepcionista</option>
+        <option value="administrador" {{ 'selected' if datos.get('rol') == 'administrador' }}>Administrador</option>
+      </select>
+    </div>
+    <div class="col-md-6"><label for="password" class="form-label">Contraseña</label>
+      <input id="password" name="password" type="password" class="form-control" minlength="6" required></div>
+    <div class="col-12">
+      <button class="btn btn-success" type="submit">Crear usuario</button>
+      <a class="btn btn-secondary" href="{{ url_for('usuarios_lista') }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

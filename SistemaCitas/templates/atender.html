@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge_estado %}
+{% block title %}Atender cita{% endblock %}
+{% block content %}
+<div class="card shadow-sm mb-4"><div class="card-body">
+  <div class="d-flex justify-content-between">
+    <div>
+      <h1 class="h4 mb-1">Atención de {{ cita.paciente }}</h1>
+      <div class="text-muted">{{ cita.fecha|fecha }} a las {{ cita.hora|hora }} · {{ cita.medico }}</div>
+      <div class="mt-2"><strong>Motivo:</strong> {{ cita.motivo }}</div>
+    </div>
+    <div>{{ badge_estado(cita.estado) }}</div>
+  </div>
+</div></div>
+<div class="card shadow-sm"><div class="card-body">
+  <h2 class="h5 mb-3">Registro clínico</h2>
+  <form method="post" class="row g-3">
+    <div class="col-12"><label for="diagnostico" class="form-label">Diagnóstico *</label>
+      <textarea id="diagnostico" name="diagnostico" class="form-control" rows="3" minlength="5" required>{{ datos.get('diagnostico', '') }}</textarea></div>
+    <div class="col-md-6"><label for="tratamiento" class="form-label">Tratamiento</label>
+      <textarea id="tratamiento" name="tratamiento" class="form-control" rows="3">{{ datos.get('tratamiento', '') or '' }}</textarea></div>
+    <div class="col-md-6"><label for="observaciones" class="form-label">Observaciones</label>
+      <textarea id="observaciones" name="observaciones" class="form-control" rows="3">{{ datos.get('observaciones', '') or '' }}</textarea></div>
+    <div class="col-12">
+      <button class="btn btn-success" type="submit">Guardar y marcar como atendida</button>
+      <a class="btn btn-secondary" href="{{ url_for('citas_lista') }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

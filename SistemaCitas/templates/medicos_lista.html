@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Médicos{% endblock %}
+{% block content %}
+{% set admin = session.get('rol') == 'administrador' %}
+<div class="card shadow-sm"><div class="card-body">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Médicos</h1>
+    {% if admin %}<a class="btn btn-success btn-sm" href="{{ url_for('medico_form') }}"><i class="bi bi-plus-lg"></i> Nuevo médico</a>{% endif %}
+  </div>
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead><tr><th>Nombre</th><th>Especialidad</th><th>Registro</th><th>Teléfono</th><th>Correo</th><th>Horario semanal</th><th>Próximas fechas disponibles</th><th>Estado</th>{% if admin %}<th class="text-end">Acciones</th>{% endif %}</tr></thead>
+      <tbody>
+      {% for m in medicos %}
+        <tr>
+          <td>{{ m.nombre }}</td>
+          <td>{{ m.especialidad or 'Sin especialidad' }}</td>
+          <td>{{ m.registro_profesional or '—' }}</td><td>{{ m.telefono or '—' }}</td><td>{{ m.correo }}</td>
+          <td><div class="small">{% for numero,nombre in dias %}{% set h=m.horario.get(numero) %}{% if h %}<div><strong>{{ nombre[:3] }}:</strong> {{ h.hora_inicio|hora }}–{{ h.hora_fin|hora }}</div>{% endif %}{% endfor %}{% if not m.horario %}<span class="text-danger">Sin horario configurado</span>{% endif %}</div></td>
+          <td><div class="small">{% for f in m.fechas_disponibles[:5] %}<div>{{ f.fecha|fecha }} · {{ f.cantidad }} turno(s)</div>{% else %}<span class="text-muted">Sin fechas próximas</span>{% endfor %}</div></td>
+          <td>{% if m.activo %}<span class="badge text-bg-success">Activo</span>{% else %}<span class="badge text-bg-secondary">Inactivo</span>{% endif %}</td>
+          {% if admin %}
+          <td class="text-end">
+            <a class="btn btn-sm btn-warning" href="{{ url_for('medico_form', medico_id=m.id) }}"><i class="bi bi-pencil"></i> Editar</a>
+            <form class="d-inline" method="post" action="{{ url_for('medico_eliminar', medico_id=m.id) }}"
+                  onsubmit="return confirm('¿Eliminar este médico?');">
+              <button class="btn btn-sm btn-danger" type="submit"><i class="bi bi-trash"></i> Eliminar</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+      {% else %}
+        <tr><td colspan="9" class="text-center text-muted">No hay médicos registrados.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div></div>
+{% endblock %}

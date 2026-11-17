@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo %}
+{% block title %}Registro de paciente{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="card shadow-sm"><div class="card-body p-4">
+      <h1 class="h4 mb-3">Registro de paciente</h1>
+      <form method="post" class="row g-3">
+        <div class="col-md-6">{{ campo('nombre','Nombre completo',datos) }}</div>
+        <div class="col-md-6">{{ campo('documento','Documento (solo números)',datos,extra='inputmode="numeric" pattern="\\d{5,15}"') }}</div>
+        <div class="col-md-6">{{ campo('correo','Correo',datos,'email') }}</div>
+        <div class="col-md-6">{{ campo('telefono','Teléfono',datos,'tel',False) }}</div>
+        <div class="col-md-6"><label for="password" class="form-label">Contraseña</label>
+          <input id="password" name="password" type="password" class="form-control" minlength="6" required></div>
+        <div class="col-md-6"><label for="confirmar" class="form-label">Confirmar contraseña</label>
+          <input id="confirmar" name="confirmar" type="password" class="form-control" minlength="6" required></div>
+        <div class="col-12">
+          <button class="btn btn-success" type="submit">Crear cuenta</button>
+          <a class="btn btn-secondary" href="{{ url_for('login') }}">Cancelar</a>
+        </div>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

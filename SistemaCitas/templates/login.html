@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesión{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5 col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h1 class="h4 text-center mb-1"><i class="bi bi-heart-pulse-fill text-primary"></i> MediCitas</h1>
+        <p class="text-muted text-center small mb-4">Sistema de gestión de citas médicas</p>
+        <form method="post" class="vstack gap-3">
+          <div>
+            <label for="correo" class="form-label">Correo</label>
+            <input id="correo" name="correo" type="email" class="form-control" required autofocus>
+          </div>
+          <div>
+            <label for="password" class="form-label">Contraseña</label>
+            <input id="password" name="password" type="password" class="form-control" required>
+          </div>
+          <button class="btn btn-primary" type="submit">Ingresar</button>
+        </form>
+        <hr>
+        <p class="text-center small mb-0">¿Eres paciente y no tienes cuenta? <a href="{{ url_for('registro') }}">Regístrate</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Mi horario{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><h1 class="h4 mb-1">Mi horario de atención</h1><p class="text-muted mb-0">Jornadas configuradas y próximas fechas con turnos libres.</p></div><span class="badge text-bg-primary">Perfil médico</span></div>
+<div class="card shadow-sm mb-4"><div class="card-body"><h2 class="h5">Horario semanal</h2><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Día</th><th>Jornada</th><th>Estado</th></tr></thead><tbody>
+{% for numero,nombre in dias %}{% set h=horario.get(numero) %}<tr><td>{{ nombre }}</td>{% if h %}<td>{{ h.hora_inicio|hora }} – {{ h.hora_fin|hora }}</td><td><span class="badge text-bg-success">Trabaja</span></td>{% else %}<td>—</td><td><span class="badge text-bg-secondary">No labora</span></td>{% endif %}</tr>{% endfor %}
+</tbody></table></div></div></div>
+<div class="card shadow-sm"><div class="card-body"><h2 class="h5">Fechas disponibles</h2><p class="small text-muted">Próximos 30 días. Los horarios se actualizan al reservar o cancelar una cita.</p><div class="row g-2">
+{% for f in fechas %}<div class="col-6 col-md-4 col-lg-3"><div class="border rounded p-2 h-100"><strong>{{ f.fecha|fecha }}</strong><div class="small text-success">{{ f.cantidad }} turno(s) libre(s)</div><div class="small text-muted">{{ f.horas|join(', ') }}</div></div></div>{% else %}<p class="text-muted">No hay fechas disponibles en los próximos 30 días.</p>{% endfor %}
+</div></div></div>
+{% endblock %}

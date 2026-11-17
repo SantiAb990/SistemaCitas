@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge_estado %}
+{% block title %}Reporte de citas{% endblock %}
+{% block content %}
+<div class="card shadow-sm mb-4 no-print"><div class="card-body">
+  <h1 class="h4 mb-3">Reporte de citas</h1>
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-2"><label class="form-label small">Desde</label><input type="date" name="desde" class="form-control" value="{{ desde }}"></div>
+    <div class="col-md-2"><label class="form-label small">Hasta</label><input type="date" name="hasta" class="form-control" value="{{ hasta }}"></div>
+    <div class="col-md-3"><label class="form-label small">Médico</label>
+      <select name="medico_id" class="form-select"><option value="">Todos</option>
+      {% for m in medicos %}<option value="{{ m.id }}" {{ 'selected' if medico_id == m.id }}>{{ m.nombre }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label small">Estado</label>
+      <select name="estado" class="form-select"><option value="">Todos</option>
+      {% for e in estados %}<option {{ 'selected' if e == estado }}>{{ e }}</option>{% endfor %}</select></div>
+    <div class="col-md-3 d-flex gap-2">
+      <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Filtrar</button>
+      <a class="btn btn-success" href="{{ url_for('reportes_csv', desde=desde, hasta=hasta, medico_id=medico_id or '', estado=estado) }}"><i class="bi bi-filetype-csv"></i> CSV</a>
+      <button class="btn btn-outline-secondary" type="button" onclick="window.print()"><i class="bi bi-printer"></i></button>
+    </div>
+  </form>
+</div></div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-5"><div class="card shadow-sm h-100"><div class="card-body">
+    <h2 class="h6">Resumen del periodo ({{ desde|replace('-','/') }} a {{ hasta|replace('-','/') }})</h2>
+    <p class="display-6 mb-2">{{ filas|length }} <small class="fs-6 text-muted">citas</small></p>
+    {% for e in estados %}<span class="me-2">{{ badge_estado(e) }} {{ por_estado.get(e, 0) }}</span>{% endfor %}
+  </div></div></div>
+  <div class="col-md-7"><div class="card shadow-sm h-100"><div class="card-body">
+    <h2 class="h6">Por médico</h2>
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Médico</th><th>Total</th><th>Atendidas</th><th>Canceladas</th></tr></thead>
+      {% for medico, d in por_medico.items() %}
+      <tr><td>{{ medico }}</td><td>{{ d['total'] }}</td><td>{{ d.get('Atendida', 0) }}</td><td>{{ d.get('Cancelada', 0) }}</td></tr>
+      {% else %}<tr><td colspan="4" class="text-muted">Sin datos.</td></tr>{% endfor %}
+    </table>
+  </div></div></div>
+</div>
+
+<div class="card shadow-sm"><div class="card-body">
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead><tr><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Médico</th><th>Especialidad</th><th>Motivo</th><th>Estado</th></tr></thead>
+      <tbody>
+      {% for f in filas %}
+      <tr><td>{{ f.fecha|fecha }}</td><td>{{ f.hora|hora }}</td><td>{{ f.paciente }}</td><td>{{ f.medico }}</td>
+          <td>{{ f.especialidad or '—' }}</td><td>{{ f.motivo }}</td><td>{{ badge_estado(f.estado) }}</td></tr>
+      {% else %}<tr><td colspan="7" class="text-center text-muted">No hay citas con esos filtros.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div></div>
+{% endblock %}

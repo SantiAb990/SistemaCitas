@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Historial de {{ paciente.nombre }}{% endblock %}
+{% block content %}
+<div class="card shadow-sm mb-4"><div class="card-body">
+  <h1 class="h4 mb-1">Historial de atención</h1>
+  <div><strong>{{ paciente.nombre }}</strong> · Documento {{ paciente.documento }}</div>
+  <div class="text-muted small">
+    {{ paciente.telefono or 'Sin teléfono' }} · {{ paciente.correo or 'Sin correo' }}
+    {% if paciente.fecha_nacimiento %} · Nacimiento: {{ paciente.fecha_nacimiento|fecha }}{% endif %}
+  </div>
+</div></div>
+{% for r in registros %}
+<div class="card shadow-sm mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between flex-wrap">
+    <h2 class="h6 mb-1">{{ r.fecha|fecha }} · {{ r.hora|hora }} — {{ r.medico }}
+      <small class="text-muted">({{ r.especialidad or 'Sin especialidad' }})</small></h2>
+  </div>
+  <p class="mb-1"><strong>Motivo:</strong> {{ r.motivo }}</p>
+  <p class="mb-1"><strong>Diagnóstico:</strong> {{ r.diagnostico }}</p>
+  {% if r.tratamiento %}<p class="mb-1"><strong>Tratamiento:</strong> {{ r.tratamiento }}</p>{% endif %}
+  {% if r.observaciones %}<p class="mb-0"><strong>Observaciones:</strong> {{ r.observaciones }}</p>{% endif %}
+</div></div>
+{% else %}
+<div class="alert alert-warning">Este paciente aún no tiene atenciones registradas.</div>
+{% endfor %}
+<a class="btn btn-secondary" href="javascript:history.back()"><i class="bi bi-arrow-left"></i> Volver</a>
+{% endblock %}

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}MediCitas{% endblock %} · MediCitas</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    /* Barra principal: contraste alto, enlaces separados y lectura sencilla. */
+    .barra-principal {
+      background: linear-gradient(110deg, #0756a5, #0878d1);
+      box-shadow: 0 3px 12px rgba(0, 45, 95, .20);
+      padding: .8rem 0;
+    }
+    .navbar-brand { font-size: 1.35rem; font-weight: 700; letter-spacing: .2px; }
+    .navbar-nav { gap: .25rem; }
+    .navbar-nav .nav-link {
+      color: rgba(255,255,255,.94) !important;
+      border-radius: .55rem;
+      padding: .6rem .8rem !important;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background-color .18s ease, transform .18s ease;
+    }
+    .navbar-nav .nav-link:hover,
+    .navbar-nav .nav-link.activo {
+      color: #fff !important;
+      background: rgba(255,255,255,.19);
+    }
+    .navbar-nav .nav-link:hover { transform: translateY(-1px); }
+    .usuario-menu { display: flex; align-items: center; gap: .55rem; }
+    .stat-card { border: 0; border-left: 5px solid var(--bs-primary); }
+    .stat-card .valor { font-size: 2rem; font-weight: 700; line-height: 1; }
+    @media (max-width: 991.98px) {
+      .navbar-nav { gap: .1rem; padding: .6rem 0; }
+      .navbar-nav .nav-link { padding: .65rem .8rem !important; }
+      .usuario-menu { align-items: flex-start; padding: .5rem 0 1rem; }
+    }
+    @media print { nav, .no-print, .alert { display: none !important; } }
+  </style>
+</head>
+<body class="bg-light">
+{% set rol = session.get('rol') %}
+<!-- Menú compartido: cada usuario ve únicamente las secciones permitidas para su rol. -->
+<nav class="navbar navbar-expand-lg navbar-dark barra-principal mb-4">
+  <div class="container-fluid px-lg-4">
+    <a class="navbar-brand me-lg-4" href="{{ url_for('inicio') }}">
+      <i class="bi bi-heart-pulse-fill me-1"></i>MediCitas
+    </a>
+    {% if session.get('user_id') %}
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Abrir menú">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="menu">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link {{ 'activo' if request.endpoint == 'dashboard' else '' }}" href="{{ url_for('dashboard') }}"><i class="bi bi-speedometer2 me-1"></i>Inicio</a></li>
+        <li class="nav-item"><a class="nav-link {{ 'activo' if request.endpoint in ('citas_lista','cita_form','cita_estado','atender') else '' }}" href="{{ url_for('citas_lista') }}"><i class="bi bi-calendar-check me-1"></i>Citas</a></li>
+        {% if rol in ('administrador','recepcionista','medico') %}
+        <li class="nav-item"><a class="nav-link {{ 'activo' if request.endpoint in ('pacientes_lista','paciente_form','historial','mi_historial') else '' }}" href="{{ url_for('pacientes_lista') }}"><i class="bi bi-people me-1"></i>Pacientes</a></li>
+        {% endif %}
+        {% if rol in ('administrador','recepcionista') %}
+        <li class="nav-item"><a class="nav-link {{ 'activo' if request.endpoint in ('medicos_lista','medico_form') else '' }}" href="{{ url_for('medicos_lista') }}"><i class="bi bi-person-badge me-1"></i>Médicos</a></li>
+        <li class="nav-item"><a class="nav-link {{ 'activo' if request.endpoint in ('reportes','reportes_csv') else '' }}" href="{{ url_for('reportes') }}"><i class="bi bi-file-earmark-bar-graph me-1"></i>Reportes</a></li>
+        {% endif %}
+        {% if rol == 'administrador' %}
+        <li class="nav-item"><a class="nav-link {{ 'activo' if request.endpoint == 'especialidades' else '' }}" href="{{ url_for('especialidades') }}"><i class="bi bi-hospital me-1"></i>Especialidades</a></li>
+        <li class="nav-item"><a class="nav-link {{ 'activo' if request.endpoint in ('usuarios_lista','usuario_nuevo') else '' }}" href="{{ url_for('usuarios_lista') }}"><i class="bi bi-shield-lock me-1"></i>Usuarios</a></li>
+        {% endif %}
+        {% if rol == 'medico' %}
+        <li class="nav-item"><a class="nav-link {{ 'activo' if request.endpoint == 'mi_horario' else '' }}" href="{{ url_for('mi_horario') }}"><i class="bi bi-clock-history me-1"></i>Mi horario</a></li>
+        {% endif %}
+        {% if rol == 'paciente' %}
+        <li class="nav-item"><a class="nav-link {{ 'activo' if request.endpoint == 'mi_historial' else '' }}" href="{{ url_for('mi_historial') }}"><i class="bi bi-journal-medical me-1"></i>Mi historial</a></li>
+        {% endif %}
+      </ul>
+      <div class="usuario-menu text-white">
+        <span><i class="bi bi-person-circle me-1"></i>{{ session.get('nombre') }}</span>
+        <span class="badge rounded-pill text-bg-light text-primary text-capitalize">{{ rol }}</span>
+        <a class="btn btn-outline-light btn-sm ms-lg-2" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-1"></i>Salir</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</nav>
+
+<main class="container-fluid px-lg-4 pb-5">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for categoria, mensaje in messages %}
+      <div class="alert alert-{{ categoria if categoria in ('success','danger','warning','info') else 'info' }} alert-dismissible fade show" role="alert">
+        {{ mensaje }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

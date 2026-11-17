@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Reprogramar' if cita else 'Agendar' }} cita{% endblock %}
+{% block content %}
+<div class="card shadow-sm"><div class="card-body">
+  <h1 class="h4 mb-3">{{ 'Reprogramar cita' if cita else 'Agendar cita' }}</h1>
+  <form method="post" class="row g-3">
+    {% if session.get('rol') != 'paciente' %}
+    <div class="col-md-6">
+      <label for="paciente_id" class="form-label">Paciente</label>
+      <select id="paciente_id" name="paciente_id" class="form-select" required>
+        <option value="" disabled {{ 'selected' if not datos.get('paciente_id') }}>Selecciona un paciente</option>
+        {% for p in pacientes %}
+        <option value="{{ p.id }}" {{ 'selected' if datos.get('paciente_id')|string == p.id|string }}>{{ p.nombre }} ({{ p.documento }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-6">
+      <label for="medico_id" class="form-label">Médico</label>
+      <select id="medico_id" name="medico_id" class="form-select" required>
+        <option value="" disabled {{ 'selected' if not datos.get('medico_id') }}>Selecciona un médico</option>
+        {% for m in medicos %}
+        <option value="{{ m.id }}" {{ 'selected' if datos.get('medico_id')|string == m.id|string }}>{{ m.nombre }} — {{ m.especialidad or 'Sin especialidad' }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label for="fecha" class="form-label">Fecha</label>
+      <input id="fecha" name="fecha" type="date" class="form-control" min="{{ hoy }}" value="{{ datos.get('fecha', '') }}" required>
+      <div id="fechas-disponibles" class="form-text mt-2">Selecciona un médico para consultar las próximas fechas con disponibilidad.</div>
+    </div>
+    <div class="col-md-3">
+      <label for="hora" class="form-label">Hora</label>
+      <select id="hora" name="hora" class="form-select" required>
+        <option value="">Selecciona una fecha y un médico</option>
+        {% for h in horas %}<option value="{{ h }}" {{ 'selected' if datos.get('hora') == h }}>{{ h }}</option>{% endfor %}
+      </select>
+      <div id="mensaje-disponibilidad" class="form-text">Primero selecciona el médico y la fecha para consultar los turnos libres.</div>
+    </div>
+    <div class="col-12">
+      <label for="motivo" class="form-label">Motivo de la consulta</label>
+      <textarea id="motivo" name="motivo" class="form-control" rows="3" minlength="5" maxlength="255" required>{{ datos.get('motivo', '') }}</textarea>
+    </div>
+    <div class="col-12">
+      <button class="btn btn-success" type="submit">Guardar</button>
+      <a class="btn btn-secondary" href="{{ url_for('citas_lista') }}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+<!-- Este JavaScript consulta al servidor para que el usuario solo vea fechas y horas libres. -->
+<script>
+// Espera a que el formulario esté cargado antes de buscar sus controles.
+document.addEventListener('DOMContentLoaded', () => {
+  const medico = document.getElementById('medico_id');
+  const fecha = document.getElementById('fecha');
+  const hora = document.getElementById('hora');
+  const mensaje = document.getElementById('mensaje-disponibilidad');
+  const fechasBox = document.getElementById('fechas-disponibles');
+  // Consulta las fechas en las que el médico tiene al menos un turno libre.
+  // Si se elimina esta función, el paciente ya no verá sugerencias de fechas.
+  async function cargarFechas() {
+    if (!medico.value) { fechasBox.textContent = 'Selecciona un médico para consultar fechas disponibles.'; return; }
+    fechasBox.textContent = 'Consultando próximas fechas...';
+    try {
+      const r = await fetch(`{{ url_for('api_fechas_disponibles') }}?medico_id=${encodeURIComponent(medico.value)}`);
+      const d = await r.json();
+      fechasBox.innerHTML = '';
+      if (!d.fechas.length) { fechasBox.textContent = d.mensaje; return; }
+      const titulo = document.createElement('div'); titulo.className = 'small text-muted mb-1'; titulo.textContent = 'Fechas con turnos libres (próximos 30 días):'; fechasBox.appendChild(titulo);
+      const lista = document.createElement('div'); lista.className = 'd-flex flex-wrap gap-1';
+      d.fechas.slice(0, 10).forEach(f => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-outline-success btn-sm'; b.textContent = `${f.fecha} (${f.cantidad})`; b.addEventListener('click', () => { fecha.value = f.fecha; cargarDisponibilidad(); }); lista.appendChild(b); });
+      fechasBox.appendChild(lista);
+    } catch (e) { fechasBox.textContent = 'No se pudieron consultar las fechas.'; }
+  }
+  // Consulta las horas libres para la combinación de médico y fecha elegida.
+  // No se debe reemplazar por una lista fija: la disponibilidad cambia al reservar citas.
+  async function cargarDisponibilidad() {
+    const horaAnterior = hora.value;
+    hora.innerHTML = '<option value="">Consultando disponibilidad...</option>';
+    if (!medico.value || !fecha.value) {
+      hora.innerHTML = '<option value="">Selecciona médico y fecha</option>';
+      mensaje.textContent = 'Primero selecciona el médico y la fecha.';
+      return;
+    }
+    try {
+      const respuesta = await fetch(`{{ url_for('api_disponibilidad') }}?medico_id=${encodeURIComponent(medico.value)}&fecha=${encodeURIComponent(fecha.value)}&excluir_cita={{ cita.id if cita else 0 }}`);
+      const datos = await respuesta.json();
+      hora.innerHTML = '<option value="">Selecciona una hora disponible</option>';
+      datos.horas.forEach(h => {
+        const opcion = document.createElement('option'); opcion.value = h; opcion.textContent = h;
+        if (h === horaAnterior) opcion.selected = true;
+        hora.appendChild(opcion);
+      });
+      mensaje.textContent = datos.mensaje || `${datos.horas.length} horario(s) disponible(s). Cada cita dura 30 minutos.`;
+    } catch (e) {
+      hora.innerHTML = '<option value="">No se pudo consultar</option>';
+      mensaje.textContent = 'No fue posible consultar la disponibilidad. Intenta nuevamente.';
+    }
+  }
+  // Al cambiar de médico se vuelven a consultar tanto las fechas como las horas.
+  // Al cambiar solo la fecha, basta con actualizar las horas de ese día.
+  medico.addEventListener('change', () => { cargarFechas(); cargarDisponibilidad(); });
+  fecha.addEventListener('change', cargarDisponibilidad);
+  if (medico.value) cargarFechas();
+  if (medico.value && fecha.value) cargarDisponibilidad();
+});
+</script>
+{% endblock %}
