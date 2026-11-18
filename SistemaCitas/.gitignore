@@ -1,0 +1,10 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Certificados y claves privadas
+certs/
+*.pem
+*.key

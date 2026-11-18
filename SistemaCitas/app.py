@@ -21,45 +21,64 @@ app.secret_key = os.getenv("SECRET_KEY", "cambia-esta-clave-antes-de-publicar")
 # ---------------------------------------------------------------------
 # 1) Conexión a la base de datos (valores por defecto de XAMPP)
 # ---------------------------------------------------------------------
-DB_CONFIG = dict(
-    host=os.getenv("DB_HOST", "localhost"),
-    port=int(os.getenv("DB_PORT", "3306")),
-    user=os.getenv("DB_USER", "root"),
-    password=os.getenv("DB_PASSWORD", ""),
-    database=os.getenv("DB_NAME", "sistema_citas"),
-)
+
+DB_ENV = os.getenv("DB_ENV", "local")
+
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": int(os.getenv("DB_PORT", "3306")),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", ""),
+    "database": os.getenv("DB_NAME", "sistema_citas"),
+}
+
+if DB_ENV == "local":
+    # XAMPP local: conexión sin SSL
+    DB_CONFIG["ssl_disabled"] = True
+
+else:
+    # TiDB Cloud: conexión segura mediante SSL
+    DB_CONFIG["ssl_ca"] = os.getenv("DB_SSL_CA")
+    DB_CONFIG["ssl_verify_cert"] = True
+    DB_CONFIG["ssl_verify_identity"] = True
+
 
 def get_db_connection():
-    """Abre la conexión con MySQL usando los datos definidos en DB_CONFIG. Si cambia el puerto o la clave de XAMPP, se ajusta en esa configuración. Si se elimina, el sistema no podrá consultar ni guardar información."""
+    """Abre conexión con MySQL local o TiDB Cloud."""
     return mysql.connector.connect(**DB_CONFIG)
 
 
 @contextmanager
 def db():
-    """Abre conexión + cursor (diccionarios), hace commit al salir y
-    rollback si algo falla. Uso: with db() as cur: cur.execute(...)"""
+    """Gestiona la conexión y el cursor de MySQL."""
+
     conn = get_db_connection()
-    cur = conn.cursor(dictionary=True)
+    cur = None
+
     try:
+        cur = conn.cursor(dictionary=True)
         yield cur
         conn.commit()
+
     except Exception:
         conn.rollback()
         raise
+
     finally:
-        cur.close()
+        if cur is not None:
+            cur.close()
         conn.close()
 
 
 def query(sql, params=(), one=False):
-    """SELECT rápido: devuelve una fila (one=True) o una lista de filas."""
+    """SELECT rápido: devuelve una fila o una lista."""
     with db() as cur:
         cur.execute(sql, params)
         return cur.fetchone() if one else cur.fetchall()
 
 
 def execute(sql, params=()):
-    """INSERT/UPDATE/DELETE rápido. Devuelve el id insertado."""
+    """INSERT/UPDATE/DELETE. Devuelve el id insertado."""
     with db() as cur:
         cur.execute(sql, params)
         return cur.lastrowid
@@ -100,17 +119,97 @@ def horas_disponibles(medico_id, fecha_txt, excluir_cita=None):
     return disponibles
 
 
+
 def fechas_disponibles(medico_id, dias=30):
-    """Lista fechas futuras con al menos un turno libre para un médico."""
+    """Calcula fechas disponibles usando solo dos consultas a la BD."""
     if not medico_id:
         return []
+
+    fecha_inicio = date.today()
+    fecha_fin = fecha_inicio + timedelta(days=dias)
+
+    # 1. Consultar todos los horarios del médico de una sola vez
+    jornadas = query("""
+        SELECT dia_semana, hora_inicio, hora_fin
+        FROM horarios_medicos
+        WHERE medico_id = %s AND activo = 1
+    """, (medico_id,))
+
+    jornadas_por_dia = {
+        fila["dia_semana"]: fila for fila in jornadas
+    }
+
+    if not jornadas_por_dia:
+        return []
+
+    # 2. Consultar todas las citas ocupadas del periodo
+    ocupadas = query("""
+        SELECT fecha, hora
+        FROM citas
+        WHERE medico_id = %s
+          AND fecha BETWEEN %s AND %s
+          AND estado <> 'Cancelada'
+    """, (medico_id, fecha_inicio, fecha_fin))
+
+    ocupadas_por_fecha = {}
+
+    for fila in ocupadas:
+        fecha = fila["fecha"]
+        fecha_txt = fecha.isoformat() if hasattr(fecha, "isoformat") else str(fecha)
+
+        ocupadas_por_fecha.setdefault(fecha_txt, set()).add(
+            filtro_hora(fila["hora"])
+        )
+
+    def como_hora(valor):
+        if isinstance(valor, timedelta):
+            return (datetime.min + valor).time()
+        return valor if isinstance(valor, time) else time.fromisoformat(str(valor))
+
     resultado = []
+
+    # Calcular los turnos sin volver a consultar la base de datos
     for offset in range(dias + 1):
-        fecha_obj = date.today() + timedelta(days=offset)
-        horas = horas_disponibles(medico_id, fecha_obj.isoformat())
-        if horas:
-            resultado.append({"fecha": fecha_obj.isoformat(), "horas": horas,
-                              "cantidad": len(horas)})
+        fecha_obj = fecha_inicio + timedelta(days=offset)
+
+        jornada = jornadas_por_dia.get(fecha_obj.weekday())
+
+        if not jornada:
+            continue
+
+        inicio = como_hora(jornada["hora_inicio"])
+        fin = como_hora(jornada["hora_fin"])
+
+        ocupadas_set = ocupadas_por_fecha.get(
+            fecha_obj.isoformat(), set()
+        )
+
+        disponibles = []
+
+        actual = datetime.combine(fecha_obj, inicio)
+        limite = datetime.combine(fecha_obj, fin)
+
+        while actual + timedelta(minutes=DURACION_CITA) <= limite:
+            slot = actual.strftime("%H:%M")
+
+            if (
+                slot not in ocupadas_set
+                and (
+                    fecha_obj > date.today()
+                    or slot > datetime.now().strftime("%H:%M")
+                )
+            ):
+                disponibles.append(slot)
+
+            actual += timedelta(minutes=DURACION_CITA)
+
+        if disponibles:
+            resultado.append({
+                "fecha": fecha_obj.isoformat(),
+                "horas": disponibles,
+                "cantidad": len(disponibles)
+            })
+
     return resultado
 
 
